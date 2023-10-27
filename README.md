@@ -1,1 +1,1 @@
-# pineapple
+# Project Pineapple 🍍
