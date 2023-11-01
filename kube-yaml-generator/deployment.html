@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Kubernetes YAML Generator</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="#">Home</a>
+        <a class="navbar-brand" href="#">About</a>
+    </nav>
+
+    <div class="container mt-5">
+        <!-- <h1 class="text-center text-primary">Kubernetes Deployment YAML Generator</h1> -->
+        <div class="bg-light p-4 rounded" id="homePage">
+            <h2>Welcome to the Kubernetes Deployment YAML Generator!</h2>
+            <p>This tool allows you to generate Kubernetes Deployment YAML files easily. Specify the deployment name,
+                container image, number of replicas, optional labels for both <code>metadata</code> and
+                <code>matchLabels</code>, and container ports with their associated port names and protocols. Click the
+                "Generate YAML" button to create your Kubernetes configuration.
+            </p>
+        </div>
+
+        <form id="yamlGenerator" class="mt-4 bg-light p-4 rounded">
+            <div class="form-group">
+                <label for="namespace">Namespace:</label>
+                <input type="text" class="form-control" id="namespace" name="namespace" required>
+            </div>
+
+            <div class="form-group">
+                <label for="deploymentName">Deployment Name:</label>
+                <input type="text" class="form-control" id="deploymentName" name="deploymentName" required>
+            </div>
+
+            <div class="form-group">
+                <label for="replicas">Replicas:</label>
+                <input type="number" class="form-control" id="replicas" name="replicas" required>
+            </div>
+
+            <div class="form-group">
+                <label for="image">Container Image:</label>
+                <input type="text" class="form-control" id="image" name="image" required>
+            </div>
+
+            <div class="form-group" id="matchLabelFields">
+                <label for="matchLabelKey">Match Label Key:</label>
+                <input type="text" class="form-control" name="matchLabelKey" required>
+                <div style="margin-top: 10px;">
+                    <label for="matchLabelValue">Match Label Value:</label>
+                    <input type="text" class="form-control" name="matchLabelValue" required>
+                </div>
+
+            </div>
+
+            <div>
+                <button class="btn btn-success" type="button" onclick="addMatchLabelField()">Add Match Label</button>
+            </div>
+
+            <div class="form-group" id="portFields" style="margin-top: 10px;">
+                <label for="containerPort">Container Port:</label>
+                <input type="number" class="form-control" id="containerPort" name="containerPort" required>
+
+                <div style="margin-top: 10px;">
+                    <label class="port-name-label" for="portName">Port Name:</label>
+                    <input type="text" class="form-control" id="portName" name="portName" required>
+                </div>
+
+                <div style="margin-top: 10px;">
+                    <label for="protocol">Protocol:</label>
+                    <select class="form-control" id="protocol" name="protocol">
+                        <option value="TCP">TCP</option>
+                        <option value="UDP">UDP</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn btn-success" type="button" onclick="addPortField()">Add Port</button>
+
+            <div style="display: flex; justify-content: center; align-items: center;">
+                <button class="btn btn-primary mt-3" type="button" onclick="generateYAML()">Generate YAML</button>
+            </div>
+        </form>
+
+        <h2 class="mt-4 text-primary">Generated Kubernetes YAML:</h2>
+        <pre id="yamlResult" class="bg-dark text-white p-3 rounded"></pre>
+    </div>
+
+    <script>
+        function addMatchLabelField() {
+            const matchLabelFields = document.getElementById("matchLabelFields");
+            const matchLabelCount = matchLabelFields.querySelectorAll(".field-group").length + 1;
+
+            const newMatchLabelField = document.createElement("div");
+            newMatchLabelField.className = "field-group";
+            newMatchLabelField.innerHTML = `
+                <label class="field-label" for="matchLabelKey">Match Label Key:</label>
+                <input type="text" id="matchLabelKey${matchLabelCount}" name="matchLabelKey" required>
+
+                <label class="field-label" for="matchLabelValue">Match Label Value:</label>
+                <input type="text" id="matchLabelValue${matchLabelCount}" name="matchLabelValue" required>
+            `;
+            matchLabelFields.appendChild(newMatchLabelField);
+        }
+
+        function addPortField() {
+            const portFields = document.getElementById("portFields");
+            const containerPortCount = portFields.querySelectorAll("input[name^='containerPort']").length + 1;
+
+            const newPortField = document.createElement("div");
+            newPortField.className = "field-group";
+            newPortField.innerHTML = `
+                <label class="field-label" for="containerPort">Container Port:</label>
+                <input type="number" id="containerPort${containerPortCount}" name="containerPort" required>
+
+                <label class="port-name-label" for="portName">Port Name:</label>
+                <input type="text" id="portName${containerPortCount}" name="portName" required>
+
+                <label class="field-label" for="protocol">Protocol:</label>
+                <select id="protocol${containerPortCount}" name="protocol">
+                    <option value="TCP">TCP</option>
+                    <option value="UDP">UDP</option>
+                </select>
+            `;
+            portFields.appendChild(newPortField);
+        }
+
+        function generateYAML() {
+            const namespace = document.getElementById("namespace").value;
+            const deploymentName = document.getElementById("deploymentName").value;
+            const replicas = document.getElementById("replicas").value;
+            const image = document.getElementById("image").value;
+            const matchLabelKeys = document.querySelectorAll("input[name^='matchLabelKey']");
+            const matchLabelValues = document.querySelectorAll("input[name^='matchLabelValue']");
+            const containerPorts = document.querySelectorAll("input[name^='containerPort']");
+            const portNames = document.querySelectorAll("input[name^='portName']");
+            const protocols = document.querySelectorAll("select[name^='protocol']");
+
+            const matchLabels = Array.from(matchLabelKeys).map((key, index) => {
+                const value = matchLabelValues[index].value;
+                if (key.value.trim() && value.trim()) {
+                    return `        ${key.value.trim()}: ${value.trim()}`;
+                }
+                return null;
+            }).filter(label => label !== null).join('\n');
+
+            const portYAML = Array.from(containerPorts).map((port, index) => {
+                const protocol = protocols[index].value;
+                const portName = portNames[index].value;
+                return `        - containerPort: ${port.value}\n          protocol: ${protocol}\n          name: ${portName}`;
+            }).join('\n');
+
+            const matchLabelsSection = matchLabels ? `      matchLabels:\n${matchLabels}` : '';
+
+            const yaml = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${deploymentName}-deployment
+  namespace: ${namespace} # Include the namespace in metadata
+spec:
+  replicas: ${replicas}
+  template:
+    metadata:
+${matchLabelsSection}
+    spec:
+      containers:
+        - name: ${deploymentName}-container
+          image: ${image}
+          ports:
+${portYAML}
+      `;
+
+            const yamlResult = document.getElementById("yamlResult");
+            yamlResult.textContent = yaml;
+        }
+    </script>
+</body>
+
+</html>
